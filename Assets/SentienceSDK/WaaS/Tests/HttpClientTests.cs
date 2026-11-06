@@ -13,7 +13,9 @@ namespace Sentience.WaaS.Tests
             string header = request.Item1.GetRequestHeader("X-Access-Key");
             Assert.IsTrue(header.Length > 0);
             Assert.AreEqual(SentienceConfig.GetConfig().BuilderAPIKey, header);
-            Assert.IsTrue(request.Item2.Contains(header));
+            Assert.IsFalse(request.Item2.Contains(header));
+            Assert.IsTrue(request.Item2.Contains("X-Access-Key: [REDACTED]"));
+            Assert.IsTrue(request.Item2.Contains("[REQUEST BODY REDACTED]"));
         }
     }
 }

@@ -109,7 +109,7 @@ namespace Sentience.WaaS
 
         public async Task<T> PostIntent<T>(string payload, string path)
         {
-            Debug.Log($"Sending intent: {path} | with payload: {payload}");
+            Debug.Log($"Sending intent: {path}");
             Dictionary<string, string> headers = new Dictionary<string, string>();
             if (typeof(T) == typeof(IntentResponse<TransactionReturn>))
             {
