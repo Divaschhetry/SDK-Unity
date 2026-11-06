@@ -42,3 +42,9 @@ The Unity test targets expect the editor executable to be available as `Unity` o
 - [Package repository listed in the manifest](https://github.com/0xSentience/Sentience-unity)
 
 See [LICENSE](LICENSE) for the license text.
+
+## Build settings validation
+
+Run `python3 .github/scripts/validate_build_settings.py` to verify that every scene listed in Unity Build Settings exists in the repository and that its GUID matches the scene's `.meta` file. GitHub Actions runs this check for pull requests targeting
+`master` and pushes to `master`. It uses Python's standard library and does not require
+a Unity license.
