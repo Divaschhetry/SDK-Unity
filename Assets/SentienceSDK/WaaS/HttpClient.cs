@@ -99,15 +99,17 @@ namespace Sentience.WaaS
             (UnityWebRequest, string, string) newRequest = BuildRequest(path, args, headers, overrideUrl);
             UnityWebRequest request = newRequest.Item1;
             string curlRequest = newRequest.Item2;
+            long responseCode = 0;
             // Keep the raw request URL out of diagnostics.
 
             try
             {
                 await request.SendWebRequest();
+                responseCode = request.responseCode;
             
                 if (request.error != null || request.result != UnityWebRequest.Result.Success || request.responseCode < 200 || request.responseCode > 299)
                 {
-                    throw new Exception($"Error sending request ({request.responseCode}). Credentials, request and response bodies are redacted. Diagnostic template: {curlRequest}");
+                    throw CreateSafeRequestException("Error sending request", responseCode, curlRequest);
                 }
                 else
                 {
@@ -121,9 +123,13 @@ namespace Sentience.WaaS
                     }
                     catch (Exception e)
                     {
-                        throw new Exception($"Error unmarshalling response ({e.GetType().Name}). Credentials, request and response bodies are redacted. Diagnostic template: {curlRequest}");
+                        throw CreateSafeRequestException($"Error unmarshalling response ({e.GetType().Name})", responseCode, curlRequest);
                     }
                 }
+            }
+            catch (SafeRequestException)
+            {
+                throw;
             }
             catch (HttpRequestException e)
             {
@@ -140,6 +146,12 @@ namespace Sentience.WaaS
             catch (Exception e) {
                 throw new Exception("An unexpected error occurred: " + e.GetType().Name + " reason: " + "response body omitted" + "\nRedacted diagnostic template: " + curlRequest);
             }
+        }
+
+        private static SafeRequestException CreateSafeRequestException(string message, long responseCode, string curlRequest)
+        {
+            string status = responseCode > 0 ? $" HTTP status {responseCode}." : "";
+            return new SafeRequestException($"{message}.{status} Credentials, request body, and response body are omitted from diagnostics. Redacted diagnostic template: {curlRequest}");
         }
 
         private string ExtractHeaders(UnityWebRequest request)
@@ -159,6 +171,13 @@ namespace Sentience.WaaS
                 headerBuilder.Append($"-H '{headerKey}: {headerValue}' ");
             }
             return headerBuilder.ToString();
+        }
+
+        private sealed class SafeRequestException : Exception
+        {
+            public SafeRequestException(string message) : base(message)
+            {
+            }
         }
     }
 }
