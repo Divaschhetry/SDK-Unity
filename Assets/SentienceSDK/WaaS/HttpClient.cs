@@ -89,7 +89,7 @@ namespace Sentience.WaaS
             
             string method = request.method;
             string headersString = ExtractHeaders(request);
-            string curlRequest = $"curl -X {method} '{url}' {headersString} -d '{requestJson}'";
+            string curlRequest = $"curl -X {method} '[URL REDACTED]' {headersString} -d '[REQUEST BODY REDACTED]'";
 
             return (request, curlRequest, url);
         }
@@ -99,7 +99,7 @@ namespace Sentience.WaaS
             (UnityWebRequest, string, string) newRequest = BuildRequest(path, args, headers, overrideUrl);
             UnityWebRequest request = newRequest.Item1;
             string curlRequest = newRequest.Item2;
-            string url = newRequest.Item3;
+            // Keep the raw request URL out of diagnostics.
 
             try
             {
@@ -107,7 +107,7 @@ namespace Sentience.WaaS
             
                 if (request.error != null || request.result != UnityWebRequest.Result.Success || request.responseCode < 200 || request.responseCode > 299)
                 {
-                    throw new Exception($"Error sending request to {url}: {request.responseCode} {request.error}");
+                    throw new Exception($"Error sending request ({request.responseCode}). Credentials, request and response bodies are redacted. Diagnostic template: {curlRequest}");
                 }
                 else
                 {
@@ -121,24 +121,24 @@ namespace Sentience.WaaS
                     }
                     catch (Exception e)
                     {
-                        throw new Exception($"Error unmarshalling response from {url}: {e.Message} | given: {responseJson}");
+                        throw new Exception($"Error unmarshalling response ({e.GetType().Name}). Credentials, request and response bodies are redacted. Diagnostic template: {curlRequest}");
                     }
                 }
             }
             catch (HttpRequestException e)
             {
-                throw new Exception("HTTP Request failed: " + e.Message + " reason: " + Encoding.UTF8.GetString(request.downloadHandler.data)  + "\nCurl-equivalent request: " + curlRequest);
+                throw new Exception("HTTP Request failed: " + e.GetType().Name + " reason: " + "response body omitted"  + "\nRedacted diagnostic template: " + curlRequest);
             }
             catch (FormatException e)
             {
-                throw new Exception("Invalid URL format: " + e.Message + " reason: " + Encoding.UTF8.GetString(request.downloadHandler.data) + "\nCurl-equivalent request: " + curlRequest);
+                throw new Exception("Invalid URL format: " + e.GetType().Name + " reason: " + "response body omitted" + "\nRedacted diagnostic template: " + curlRequest);
             }
             catch (FileLoadException e)
             {
-                throw new Exception("File load exception: " + e.Message + " reason: " + Encoding.UTF8.GetString(request.downloadHandler.data) + "\nCurl-equivalent request: " + curlRequest);
+                throw new Exception("File load exception: " + e.GetType().Name + " reason: " + "response body omitted" + "\nRedacted diagnostic template: " + curlRequest);
             }
             catch (Exception e) {
-                throw new Exception("An unexpected error occurred: " + e.Message + " reason: " + Encoding.UTF8.GetString(request.downloadHandler.data) + "\nCurl-equivalent request: " + curlRequest);
+                throw new Exception("An unexpected error occurred: " + e.GetType().Name + " reason: " + "response body omitted" + "\nRedacted diagnostic template: " + curlRequest);
             }
         }
 
@@ -148,6 +148,10 @@ namespace Sentience.WaaS
             foreach (string headerKey in new string[]{"Content-Type", "Accept", "Authorization", "X-Sentience-Tenant", "X-Access-Key"})
             {
                 string headerValue = request.GetRequestHeader(headerKey);
+                if (headerKey == "Authorization" || headerKey == "X-Access-Key" || headerKey == "X-Sentience-Tenant")
+                {
+                    headerValue = string.IsNullOrEmpty(headerValue) ? headerValue : "[REDACTED]";
+                }
                 if (string.IsNullOrEmpty(headerValue))
                 {
                     continue;
